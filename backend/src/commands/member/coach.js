@@ -29,38 +29,42 @@ module.exports = {
         .sort({ createdAt: -1 })
         .limit(10);
 
-      // 3. Nếu DB chưa đủ, bổ sung từ API real-time
-      if (matchDetails.length === 0) {
-        console.log(`[COACH] DB trống cho ${user.riotName}, gọi API real-time...`);
+      // 3. Nếu DB chưa đủ 10 trận, fetch mới từ API và dùng 10 trận mới nhất làm chuẩn
+      if (matchDetails.length < 10) {
+        console.log(`[COACH] DB chưa đủ 10 trận cho ${user.riotName}, lấy từ API real-time...`);
         const res = await getMatches('ap', user.riotName, user.riotTag, 10);
         if (!res || !res.data || res.data.length === 0) {
-          return interaction.editReply('❌ Không tìm thấy trận đấu nào. Hãy chơi thêm ít nhất 1 trận rồi thử lại!');
-        }
+          if (matchDetails.length === 0) {
+            return interaction.editReply('❌ Không tìm thấy trận đấu nào. Hãy chơi thêm ít nhất 1 trận rồi thử lại!');
+          }
+        } else {
+          // Xoá dữ liệu cũ, dùng toàn bộ data mới từ API (lên đến 10 trận)
+          matchDetails = [];
+          for (const match of res.data) {
+            const playerStats = match.players.all_players.find(
+              p => p.name === user.riotName && p.tag === user.riotTag
+            );
+            if (!playerStats) continue;
 
-        // Parse data từ API
-        for (const match of res.data) {
-          const playerStats = match.players.all_players.find(
-            p => p.name === user.riotName && p.tag === user.riotTag
-          );
-          if (!playerStats) continue;
+            const headshots = playerStats.stats.headshots || 0;
+            const bodyshots = playerStats.stats.bodyshots || 0;
+            const legshots  = playerStats.stats.legshots  || 0;
+            const totalShots = headshots + bodyshots + legshots;
 
-          const headshots = playerStats.stats.headshots || 0;
-          const bodyshots = playerStats.stats.bodyshots || 0;
-          const legshots  = playerStats.stats.legshots  || 0;
-          const totalShots = headshots + bodyshots + legshots;
-
-          matchDetails.push({
-            matchId:     match.metadata.matchid,
-            map:         match.metadata.map,
-            agent:       playerStats.character,
-            kills:       playerStats.stats.kills,
-            deaths:      playerStats.stats.deaths,
-            assists:     playerStats.stats.assists,
-            headshotPct: totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0,
-            createdAt:   new Date(match.metadata.game_start * 1000),
-          });
+            matchDetails.push({
+              matchId:     match.metadata.matchid,
+              map:         match.metadata.map,
+              agent:       playerStats.character,
+              kills:       playerStats.stats.kills,
+              deaths:      playerStats.stats.deaths,
+              assists:     playerStats.stats.assists,
+              headshotPct: totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0,
+              createdAt:   new Date(match.metadata.game_start * 1000),
+            });
+          }
         }
       }
+
 
       if (matchDetails.length === 0) {
         return interaction.editReply('❌ Không đủ dữ liệu để phân tích. Hãy chơi thêm vài trận rồi thử lại!');
