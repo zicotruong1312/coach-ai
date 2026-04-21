@@ -41,6 +41,7 @@ const reportSchema = new mongoose.Schema({
     playstyleDesc:  { type: String },
     proPlayerMatch: { type: String },
     proPlayerReason:{ type: String },
+    recommendedAgents: [String],
     strengths:      [String],
     weaknesses:     [String],
     radarScores: {

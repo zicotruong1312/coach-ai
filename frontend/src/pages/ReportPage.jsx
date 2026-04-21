@@ -182,13 +182,13 @@ export default function ReportPage() {
         {/* Radar Chart */}
         <div>
           <SectionTitle>🕸️ Năng Lực 5 Chiều</SectionTitle>
-          <div className="card">
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
+          <div className="card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
                 <PolarGrid stroke="var(--border)" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="Bạn" dataKey="A" stroke="var(--purple)" fill="var(--purple)" fillOpacity={0.3} strokeWidth={2} />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }} />
+                <PolarRadiusAxis angle={90} domain={[0, 10]} tick={false} axisLine={false} />
+                <Radar name="Bạn" dataKey="A" stroke="var(--purple)" fill="var(--purple)" fillOpacity={0.4} strokeWidth={2.5} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -208,6 +208,20 @@ export default function ReportPage() {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Hình mẫu Pro</p>
               <p style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--cyan)', marginTop: '4px' }}>⚡ {ai.proPlayerMatch || '—'}</p>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '8px' }}>{ai.proPlayerReason || ''}</p>
+            </div>
+
+            <div className="card" style={{ borderLeft: '3px solid var(--green)' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Coach Yêu Cầu Pick</p>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+                {(ai.recommendedAgents || []).map(agent => (
+                  <span key={agent} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {agentIcons[agent] || '👤'} {agent}
+                  </span>
+                ))}
+                {(!ai.recommendedAgents || ai.recommendedAgents.length === 0) && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Đang chờ nâng cấp dữ liệu...</span>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -20,23 +20,28 @@ JSON schema:
   "playstyleDesc": "string (2-3 câu)",
   "proPlayerMatch": "string (Aspas / nAts / Boaster / Jinggg / yay / TenZ / cNed / Derke...)",
   "proPlayerReason": "string (2-3 câu tại sao match)",
+  "recommendedAgents": ["string", "string"],
   "strengths": ["string", "string", "string"],
   "weaknesses": ["string", "string", "string"],
   "radarScores": {
-    "aim": number,
-    "movement": number,
-    "abilityUsage": number,
-    "gameSense": number,
-    "teamPlay": number
+    "aim": number (1-10),
+    "movement": number (1-10),
+    "abilityUsage": number (1-10),
+    "gameSense": number (1-10),
+    "teamPlay": number (1-10)
   },
   "trainingPlan": [
-    { "day": 1, "focus": "string", "tasks": ["string","string","string"] },
+    { "day": 1, "focus": "string", "tasks": ["string (Tên bài tập cụ thể, VD: 10p Deathmatch Vandal, 100 con bot The Range)","string","string"] },
     { "day": 2, "focus": "string", "tasks": ["string","string","string"] },
     { "day": 3, "focus": "string", "tasks": ["string","string","string"] }
   ],
   "overallRating": number,
   "summary": "string (3-4 câu nhận xét tổng quát, tiếng Việt, nhiệt huyết)"
-}`;
+}
+
+LƯU Ý QUAN TRỌNG: 
+1. Mảng "recommendedAgents" phải chứa đúng tên 2-3 Agent trong Valorant (VD: "Jett", "Omen", "Killjoy") phù hợp nhất với phong cách của họ.
+2. Ở phần "trainingPlan", CÁC BÀI TẬP PHẢI CỰC KỲ CỤ THỂ VÀ THỰC TẾ. KHÔNG ĐƯỢC NÓI CHUNG CHUNG kiểu "Cải thiện kỹ năng ngắm bắn". MÀ PHẢI NÓI RÕ: "Vào The Range bật Hard Bots tập flick 15 phút", "Bắn Deathmatch chỉ được click từng viên Vandal", "Vào custom map tập ném khói vị trí X"... Đưa ra task thực hành chi tiết!`;
 
 function buildUserPrompt(stats) {
   return `Phân tích người chơi: ${stats.riotName}#${stats.riotTag} (${stats.matchCount} trận)
