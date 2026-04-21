@@ -33,16 +33,17 @@ JSON schema:
   "trainingPlan": [
     { 
       "day": 1, 
-      "focus": "string", 
+      "focus": "string (Mục tiêu của ngày)", 
       "tasks": [
         {
-          "name": "string (Tên bài tập ngắn gọn)",
+          "name": "string (Tên bài tập ngắn gọn, CẦN 3-4 BÀI TẬP MỖI NGÀY)",
           "agent": "string (Tên Agent, VD: Reyna / Bất kỳ)",
           "mode": "string (VD: The Range / Deathmatch / Custom)",
           "duration": "string (VD: 15 phút / 2 trận)",
           "videoUrl": "string (Link Youtube tìm kiếm, VD: https://www.youtube.com/results?search_query=valorant+deathmatch+routine)",
           "description": "string (Mô tả chi tiết cách thực hiện bài tập, những lỗi sai cần tránh)"
-        }
+        },
+        // YÊU CẦU: Trả về ít nhất 3 object bài tập khác nhau trong mảng tasks này!
       ] 
     },
     { "day": 2, "focus": "string", "tasks": [...] },
@@ -54,7 +55,7 @@ JSON schema:
 
 LƯU Ý QUAN TRỌNG: 
 1. Mảng "recommendedAgents" phải chứa đúng tên 2-3 Agent trong Valorant (VD: "Jett", "Omen", "Killjoy") phù hợp nhất với phong cách của họ.
-2. Ở phần "trainingPlan", CÁC BÀI TẬP PHẢI ĐƯỢC TÁCH RA THÀNH CÁC FIELD CỤ THỂ (name, agent, mode, duration, videoUrl, description). Thuộc tính "videoUrl" phải trỏ về "https://www.youtube.com/results?search_query=..." chứa cú pháp tìm kiếm video phù hợp bằng tiếng Anh. Chi tiết thực hiện ghi vào "description".`;
+2. Ở phần "trainingPlan", BẮT BUỘC MỖI NGÀY (day 1, 2, 3) PHẢI CÓ TỪ 3 ĐẾN 4 BÀI TẬP (tức là mảng tasks có 3-4 phần tử). CÁC BÀI TẬP PHẢI ĐƯỢC TÁCH RA THÀNH CÁC FIELD CỤ THỂ (name, agent, mode, duration, videoUrl, description). Thuộc tính "videoUrl" phải trỏ về "https://www.youtube.com/results?search_query=..." chứa cú pháp tìm kiếm video.`;
 
 function buildUserPrompt(stats) {
   return `Phân tích người chơi: ${stats.riotName}#${stats.riotTag} (${stats.matchCount} trận)
