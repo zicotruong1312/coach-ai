@@ -88,11 +88,11 @@ export default function ReportPage() {
   const s  = stats     || {}
 
   const radarData = [
-    { subject: 'AIM',        A: ai.radarScores?.aim        || 50 },
-    { subject: 'GAMESENSE',  A: ai.radarScores?.gamesense  || 50 },
-    { subject: 'SURVIVAL',   A: ai.radarScores?.survival   || 50 },
-    { subject: 'SUPPORT',    A: ai.radarScores?.support    || 50 },
-    { subject: 'AGGRESSION', A: ai.radarScores?.aggression || 50 },
+    { subject: 'AIM',           A: ai.radarScores?.aim          || 50 },
+    { subject: 'MOVEMENT',      A: ai.radarScores?.movement      || 50 },
+    { subject: 'ABILITY USAGE', A: ai.radarScores?.abilityUsage  || 50 },
+    { subject: 'GAME SENSE',    A: ai.radarScores?.gameSense     || 50 },
+    { subject: 'TEAM PLAY',     A: ai.radarScores?.teamPlay      || 50 },
   ]
 
   const matchHistory = (s.matchHistory || []).map((m, i) => ({

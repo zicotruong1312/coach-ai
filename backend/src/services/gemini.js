@@ -14,11 +14,11 @@ JSON schema bắt buộc:
   "strengths": ["string", "string", "string"],
   "weaknesses": ["string", "string", "string"],
   "radarScores": {
-    "aim": number (0-100),
-    "gamesense": number (0-100),
-    "survival": number (0-100),
-    "support": number (0-100),
-    "aggression": number (0-100)
+    "aim": number (0-100, dựa trên HS%, K/D, gunfight wins),
+    "movement": number (0-100, dựa trên survival rate, deaths/trận, positioning),
+    "abilityUsage": number (0-100, ước tính hiệu quả dùng skill dựa trên agent + assists),
+    "gameSense": number (0-100, dựa trên FK/FD ratio, first blood, decision making),
+    "teamPlay": number (0-100, dựa trên assists/trận, support agent usage)
   },
   "trainingPlan": [
     { "day": 1, "focus": "string", "tasks": ["string", "string", "string"] },

@@ -44,11 +44,11 @@ const reportSchema = new mongoose.Schema({
     strengths:      [String],
     weaknesses:     [String],
     radarScores: {
-      aim:      { type: Number, default: 0 },
-      gamesense:{ type: Number, default: 0 },
-      survival: { type: Number, default: 0 },
-      support:  { type: Number, default: 0 },
-      aggression:{ type: Number, default: 0 },
+      aim:          { type: Number, default: 0 }, // Độ chính xác, HS%, gunfight
+      movement:     { type: Number, default: 0 }, // Positioning, survival, death locations
+      abilityUsage: { type: Number, default: 0 }, // Hiệu quả sử dụng skill/ability
+      gameSense:    { type: Number, default: 0 }, // FK/FD ratio, decision making
+      teamPlay:     { type: Number, default: 0 }, // Assists, support, utility
     },
     trainingPlan: [{
       day:   Number,
