@@ -31,7 +31,7 @@ JSON schema bắt buộc:
 
 async function generateCoachFeedback(stats) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const userPrompt = `
 Phân tích người chơi: ${stats.riotName}#${stats.riotTag}

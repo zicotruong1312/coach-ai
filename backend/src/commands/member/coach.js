@@ -124,7 +124,7 @@ module.exports = {
           aiAnalysis,
           lastUpdatedAt: new Date(),
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
 
       // 8. Cập nhật lastCoachAt cho user
