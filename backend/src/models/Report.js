@@ -18,6 +18,8 @@ const reportSchema = new mongoose.Schema({
     avgAssists:    { type: Number, default: 0 },
     kd:            { type: Number, default: 0 },
     avgHeadshotPct:{ type: Number, default: 0 },
+    kdTrend:       { type: Number, default: 0 },
+    hsTrend:       { type: Number, default: 0 },
     avgFirstKills: { type: Number, default: 0 },
     avgFirstDeaths:{ type: Number, default: 0 },
     topAgents:     [String],
@@ -54,7 +56,14 @@ const reportSchema = new mongoose.Schema({
     trainingPlan: [{
       day:   Number,
       focus: String,
-      tasks: [String],
+      tasks: [{
+        name: String,        // Tên bài tập (VD: The Range Medium Bots)
+        agent: String,       // Đặc vụ nên dùng (VD: Reyna / Any)
+        mode: String,        // Chế độ (VD: The Range / Deathmatch / Custom)
+        duration: String,    // Thời lượng (VD: 10 phút)
+        videoUrl: String,    // Youtube search URL
+        description: String, // Hướng dẫn chi tiết
+      }],
     }],
     overallRating: { type: Number, default: 0 },
     summary:       { type: String },

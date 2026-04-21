@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
 import '../index.css'
@@ -21,17 +21,30 @@ const agentIcons = {
 }
 
 /* ─── Sub-components ─── */
-function StatCard({ icon, label, value, sub, color }) {
+function StatCard({ icon, label, value, sub, color, trend }) {
+  // trend > 0 ? xanh chữ, < 0 ? đỏ chữ
+  const isPositive = trend > 0;
+  const isNegative = trend < 0;
+  const trendColor = isPositive ? 'var(--green)' : isNegative ? 'var(--red)' : 'var(--text-muted)';
+  const trendArrow = isPositive ? '▲' : isNegative ? '▼' : '—';
+  const displayTrend = trend ? `${trendArrow} ${Math.abs(trend)}` : null;
+
   return (
     <div className="card fade-up" style={{
       display: 'flex', flexDirection: 'column', gap: '8px',
       animation: 'fadeUp 0.4s ease both',
       borderLeft: `3px solid ${color || 'var(--purple)'}`,
+      position: 'relative'
     }}>
       <span style={{ fontSize: '1.5rem' }}>{icon}</span>
       <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
       <span style={{ fontSize: '2rem', fontWeight: 900, color: color || 'var(--text)' }}>{value}</span>
       {sub && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{sub}</span>}
+      {displayTrend && (
+        <div style={{ position: 'absolute', top: 16, right: 16, fontSize: '0.85rem', fontWeight: 700, color: trendColor }}>
+          {displayTrend}
+        </div>
+      )}
     </div>
   )
 }
@@ -144,11 +157,23 @@ export default function ReportPage() {
 
       {/* ── STAT CARDS ── */}
       <div>
-        <SectionTitle>📊 Thống Kê Tổng Hợp</SectionTitle>
+         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px' }}>
+          <h2 style={{
+            fontSize: '1.1rem', fontWeight: 700, color: 'var(--purple-lt)',
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            margin: 0, padding: 0, border: 'none'
+          }}>
+            📊 Thống Kê Tổng Hợp
+          </h2>
+          {s.matchCount > 5 && (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trend so với 5 trận trước</span>
+          )}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px' }}>
-          <StatCard icon="⚔️" label="K/D"      value={s.kd || '—'}              color="var(--purple)" />
+          <StatCard icon="⚔️" label="K/D"      value={s.kd || '—'}              color="var(--purple)" trend={s.kdTrend} />
           <StatCard icon="💀" label="Kills/Trận" value={s.avgKills || '—'}        color="var(--red)" />
-          <StatCard icon="🎯" label="Headshot %"  value={`${s.avgHeadshotPct || 0}%`} color="var(--cyan)" />
+          <StatCard icon="🎯" label="Headshot %"  value={`${s.avgHeadshotPct || 0}%`} color="var(--cyan)" trend={s.hsTrend} />
           <StatCard icon="🤝" label="Assists/Trận" value={s.avgAssists || '—'}   color="var(--green)" />
           <StatCard icon="📦" label="Deaths/Trận" value={s.avgDeaths || '—'}      color="var(--orange)" />
           <StatCard icon="🗺️" label="Matches"    value={s.matchCount || 0}        color="var(--yellow)" />
@@ -161,16 +186,16 @@ export default function ReportPage() {
           <SectionTitle>📈 Lịch Sử Trận Đấu</SectionTitle>
           <div className="card">
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={matchHistory} margin={{ top: 5, right: 10, bottom: 20, left: 0 }}>
+              <ComposedChart data={matchHistory} margin={{ top: 5, right: 10, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} angle={-30} textAnchor="end" />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
                 <Tooltip contentStyle={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }} />
                 <Legend wrapperStyle={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
-                <Line type="monotone" dataKey="Kills"   stroke="var(--purple-lt)" strokeWidth={2} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="Deaths"  stroke="var(--red)"       strokeWidth={2} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="Assists"  stroke="var(--cyan)"      strokeWidth={2} dot={{ r: 4 }} strokeDasharray="4 4" />
-              </LineChart>
+                <Area type="monotone" dataKey="Deaths" fill="var(--red)" stroke="var(--red)" fillOpacity={0.2} strokeWidth={2} />
+                <Bar dataKey="Kills" barSize={20} fill="var(--purple-lt)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Assists" barSize={20} fill="var(--cyan)" radius={[4, 4, 0, 0]} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -261,9 +286,9 @@ export default function ReportPage() {
       {/* ── 3-DAY TRAINING PLAN ── */}
       <div>
         <SectionTitle>🗓️ Lộ Trình Bài Tập 3 Ngày</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
           {(ai.trainingPlan || []).map((day) => (
-            <div key={day.day} className="card" style={{ borderTop: '3px solid var(--purple)' }}>
+            <div key={day.day} className="card" style={{ borderTop: '3px solid var(--purple)', padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <span style={{
                   width: 36, height: 36, borderRadius: '50%',
@@ -271,16 +296,53 @@ export default function ReportPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: 900, fontSize: '1rem', color: '#fff', flexShrink: 0,
                 }}>{day.day}</span>
-                <span style={{ fontWeight: 700, color: 'var(--purple-lt)' }}>{day.focus}</span>
+                <span style={{ fontWeight: 800, color: 'var(--purple-lt)', fontSize: '1.1rem' }}>{day.focus}</span>
               </div>
-              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {(day.tasks || []).map((task, i) => (
-                  <li key={i} style={{ display: 'flex', gap: '10px', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                    <span style={{ color: 'var(--cyan)', flexShrink: 0 }}>→</span>
-                    <span>{task}</span>
-                  </li>
-                ))}
-              </ul>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {(day.tasks || []).map((task, i) => {
+                  // Hỗ trợ cả chuẩn cũ (string) và mới (object)
+                  if (typeof task === 'string') {
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: '10px', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                        <span style={{ color: 'var(--cyan)', flexShrink: 0 }}>→</span>
+                        <span>{task}</span>
+                      </div>
+                    )
+                  }
+                  
+                  // Chuẩn mới (Object) rendering dạng Accordion (details/summary)
+                  return (
+                    <details key={i} style={{
+                      background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                      borderRadius: '8px', overflow: 'hidden'
+                    }}>
+                      <summary style={{
+                        padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
+                        display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)'
+                      }}>
+                        <span style={{ color: 'var(--cyan)' }}>▶</span> {task.name || 'Bài tập'}
+                      </summary>
+                      <div style={{ padding: '0 12px 12px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '4px' }}>👤 Agent: <span style={{color: 'var(--purple-lt)', fontWeight: 600}}>{task.agent || 'Any'}</span></span>
+                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '4px' }}>🎮 Mode: <span style={{color: 'var(--cyan)', fontWeight: 600}}>{task.mode || 'N/A'}</span></span>
+                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '4px' }}>⏱️ Time: <span style={{color: 'var(--green)', fontWeight: 600}}>{task.duration || 'N/A'}</span></span>
+                        </div>
+                        <p style={{ marginTop: '4px' }}>{task.description || ''}</p>
+                        {task.videoUrl && (
+                          <a href={task.videoUrl} target="_blank" rel="noreferrer" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            color: 'var(--red)', fontWeight: 700, textDecoration: 'none', marginTop: '4px',
+                            padding: '6px 12px', background: 'rgba(255, 107, 107, 0.1)', borderRadius: '4px', alignSelf: 'flex-start'
+                          }}>
+                            ▶️ Xem Video Minh Họa
+                          </a>
+                        )}
+                      </div>
+                    </details>
+                  )
+                })}
+              </div>
             </div>
           ))}
         </div>

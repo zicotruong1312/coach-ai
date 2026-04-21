@@ -93,11 +93,34 @@ module.exports = {
       const kd         = avgDeaths > 0 ? +(avgKills / avgDeaths).toFixed(2) : avgKills;
       const avgHS      = +(totalHS / count).toFixed(1);
 
+      // Tính Trend (5 trận gần nhất vs 5 trận trước đó)
+      let kdTrend = 0;
+      let hsTrend = 0;
+      if (count > 5) {
+        const recent5 = matchDetails.slice(0, 5);
+        const past5 = matchDetails.slice(5, 10);
+        
+        const recentKills = recent5.reduce((s, m) => s + (m.kills || 0), 0);
+        const recentDeaths = recent5.reduce((s, m) => s + (m.deaths || 0), 0);
+        const recentKD = recentDeaths > 0 ? recentKills / recentDeaths : recentKills;
+        const recentHS = recent5.reduce((s, m) => s + (m.headshotPct || 0), 0) / 5;
+
+        const pastKills = past5.reduce((s, m) => s + (m.kills || 0), 0);
+        const pastDeaths = past5.reduce((s, m) => s + (m.deaths || 0), 0);
+        const countPast = past5.length;
+        const pastKD = pastDeaths > 0 ? pastKills / pastDeaths : pastKills;
+        const pastHS = past5.reduce((s, m) => s + (m.headshotPct || 0), 0) / countPast;
+
+        kdTrend = +(recentKD - pastKD).toFixed(2);
+        hsTrend = +(recentHS - pastHS).toFixed(1);
+      }
+
       const statsPayload = {
         riotName: user.riotName, riotTag: user.riotTag,
         matchCount: count,
         avgKills, avgDeaths, avgAssists,
         kd, avgHeadshotPct: avgHS,
+        kdTrend, hsTrend, // <== Added trend
         avgFirstKills: 0, avgFirstDeaths: 0, // placeholder
         topAgents, topMaps,
       };
