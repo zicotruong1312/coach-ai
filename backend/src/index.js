@@ -16,11 +16,15 @@ startTrackingJob();
 // 3. Initialize Express Server
 const app = express();
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'https://coach-ai.vercel.app',
-    'http://localhost:5173',  // Vite dev server
-  ],
-  methods: ['GET'],
+  origin: (origin, callback) => {
+    // Cho phép Vercel, localhost, và không có origin (Postman, v.v.)
+    if (!origin || origin.includes('vercel.app') || origin.includes('localhost')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
 }));
 app.use(express.json());
 
