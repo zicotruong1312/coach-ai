@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, Legend,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
+import { agentImg, mapColor } from '../agentData'
 import '../index.css'
 
 const API = import.meta.env.VITE_API_URL || 'https://coach-ai-t2ks.onrender.com'
@@ -20,12 +21,20 @@ const ratingGrade = (r) =>
 const winrateClass = (pct) =>
   pct >= 55 ? 'winrate-high' : pct >= 45 ? '' : 'winrate-low'
 
-const agentIcons = {
-  Jett: '🌪️', Reyna: '👁️', Sage: '🌿', Sova: '🏹', Brimstone: '🔥',
-  Phoenix: '🔥', Raze: '💣', Breach: '💥', Omen: '🌑', Killjoy: '🤖',
-  Cypher: '🕵️', Skye: '🐺', Yoru: '🃏', Astra: '⭐', Viper: '☠️',
-  Chamber: '🔫', Neon: '⚡', Fade: '🌙', Harbor: '🌊', Gekko: '🦎',
-  Deadlock: '🔗', Iso: '🧱', Clove: '🍀', Vyse: '🕸️',
+function AgentAvatar({ name, size = 40 }) {
+  const src = agentImg(name)
+  const initials = (name || '?')[0].toUpperCase()
+  if (src) return (
+    <img src={src} alt={name} width={size} height={size}
+      style={{ borderRadius: 4, objectFit: 'cover', background: 'var(--bg-card2)', flexShrink: 0 }}
+      onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }}
+    />
+  )
+  return (
+    <div style={{ width: size, height: size, borderRadius: 4, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: size * 0.4, color: 'var(--red)', flexShrink: 0 }}>
+      {initials}
+    </div>
+  )
 }
 
 const mapEmojis = {
@@ -77,45 +86,54 @@ function StatRowItem({ label, value, sub, pctColor }) {
 
 /* ─── Match Row ─── */
 function MatchRow({ match, idx }) {
-  const isWin = match.result === 'Win' || match.result === 'W'
-  const agent = match.agent || '?'
+  const isWin = match.result === 'Win' || match.result === 'W' || match.won === true
+  const agent = match.agent || ''
   const map = match.map || 'Unknown'
-  const ks = match.kills ?? '—'
-  const ds = match.deaths ?? '—'
-  const as_ = match.assists ?? '—'
+  const k = match.kills ?? 0
+  const d = match.deaths ?? 0
+  const a = match.assists ?? 0
   const hs = match.headshotPct != null ? `${match.headshotPct}%` : '—'
+  const kd = d > 0 ? (k / d).toFixed(1) : k.toString()
+  const kdColor = parseFloat(kd) >= 1.0 ? 'var(--teal)' : 'var(--red)'
+  const accentColor = mapColor(map)
 
   return (
-    <div className={`match-row fade-up ${isWin ? 'win' : 'loss'}`}>
-      <div className={`match-result-badge ${isWin ? 'win' : 'loss'}`}>
-        {isWin ? 'W' : 'L'}
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 0,
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      borderLeft: `4px solid ${isWin ? 'var(--teal)' : 'var(--red)'}`,
+      borderRadius: 6, marginBottom: 4, overflow: 'hidden',
+      transition: 'background 0.15s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.background='var(--bg-hover)'}
+    onMouseLeave={e => e.currentTarget.style.background='var(--bg-card)'}
+    >
+      {/* Agent image */}
+      <div style={{ width: 64, height: 64, flexShrink: 0, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <AgentAvatar name={agent} size={56} />
       </div>
 
-      <div className="match-agent-icon">{agentIcons[agent] || '🎯'}</div>
-
-      <div className="match-info">
-        <div className="match-map">{mapEmojis[map] || '🗺️'} {map}</div>
-        <div className="match-mode">#{idx + 1} · Competitive</div>
-      </div>
-
-      <div className="match-stat">
-        <div className="match-stat-label">K/D/A</div>
-        <div className="match-stat-value" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>
-          {ks} / {ds} / {as_}
+      {/* Map + info */}
+      <div style={{ flex: 1, padding: '10px 14px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
+          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)' }}>{map}</span>
+          {agent && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>{agent}</span>}
         </div>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>#{idx + 1} · Competitive</div>
       </div>
 
-      <div className="match-stat">
-        <div className="match-stat-label">K/D</div>
-        <div className="match-stat-value" style={{ color: ds > 0 && ks / ds >= 1 ? 'var(--teal)' : 'var(--red)' }}>
-          {ds > 0 ? (ks / ds).toFixed(1) : ks}
+      {/* Stats */}
+      {[
+        { label: 'K/D/A', value: `${k} / ${d} / ${a}`, color: 'var(--text)' },
+        { label: 'K/D',   value: kd,  color: kdColor },
+        { label: 'HS%',   value: hs,  color: parseFloat(hs) >= 25 ? 'var(--teal)' : 'var(--text)' },
+      ].map(({ label, value, color }) => (
+        <div key={label} style={{ textAlign: 'right', padding: '10px 16px', borderLeft: '1px solid var(--border)', minWidth: 70 }}>
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
+          <div style={{ fontSize: '0.95rem', fontWeight: 700, color }}>{value}</div>
         </div>
-      </div>
-
-      <div className="match-stat">
-        <div className="match-stat-label">HS%</div>
-        <div className="match-stat-value">{hs}</div>
-      </div>
+      ))}
     </div>
   )
 }
@@ -169,9 +187,9 @@ export default function ReportPage() {
   const s  = stats || {}
   const matchHistory = s.matchHistory || []
 
-  const wins = matchHistory.filter(m => m.result === 'Win' || m.result === 'W').length
+  const wins = matchHistory.filter(m => m.result === 'Win' || m.result === 'W' || m.won === true).length
   const losses = matchHistory.length - wins
-  const winPct = matchHistory.length ? Math.round((wins / matchHistory.length) * 100) : 0
+  const winPct = matchHistory.length > 0 ? Math.round((wins / matchHistory.length) * 100) : 0
 
   const radarData = [
     { subject: 'AIM',     A: ai.radarScores?.aim         || 50 },
@@ -319,12 +337,12 @@ export default function ReportPage() {
               <div>
                 <SectionHeader title="5 Chiều Năng Lực" />
                 <div className="radar-wrapper" style={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
-                      <PolarGrid stroke="var(--border)" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 11, fontWeight: 700 }} />
+                  <ResponsiveContainer width="100%" height={360}>
+                    <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="78%">
+                      <PolarGrid stroke="var(--border-light)" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text)', fontSize: 12, fontWeight: 700 }} />
                       <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar name="Bạn" dataKey="A" stroke="var(--red)" fill="var(--red)" fillOpacity={0.25} strokeWidth={2} />
+                      <Radar name="Bạn" dataKey="A" stroke="var(--red)" fill="var(--red)" fillOpacity={0.3} strokeWidth={2.5} dot={{ fill: 'var(--red)', r: 4 }} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
