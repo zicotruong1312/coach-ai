@@ -24,22 +24,15 @@ module.exports = {
     await interaction.editReply('⏳ AI Coach đang phân tích dữ liệu của bạn... (10-20 giây)');
 
     try {
-      // 2. Lấy match từ DB trước
-      let matchDetails = await MatchDetail.find({ discordId: user.discordId })
-        .sort({ createdAt: -1 })
-        .limit(10);
+      let matchDetails = [];
+      let usedApi = false;
 
-      // 3. Nếu DB chưa đủ 10 trận, fetch mới từ API và dùng 10 trận mới nhất làm chuẩn
-      if (matchDetails.length < 10) {
-        console.log(`[COACH] DB chưa đủ 10 trận cho ${user.riotName}, lấy từ API real-time...`);
+      // 2. Ưu tiên lấy trực tiếp 10 trận mới nhất từ API để đảm bảo data luôn chuẩn nhất
+      console.log(`[COACH] Lấy 10 trận mới nhất từ API real-time cho ${user.riotName}...`);
+      try {
         const res = await getMatches('ap', user.riotName, user.riotTag, 10);
-        if (!res || !res.data || res.data.length === 0) {
-          if (matchDetails.length === 0) {
-            return interaction.editReply('❌ Không tìm thấy trận đấu nào. Hãy chơi thêm ít nhất 1 trận rồi thử lại!');
-          }
-        } else {
-          // Xoá dữ liệu cũ, dùng toàn bộ data mới từ API (lên đến 10 trận)
-          matchDetails = [];
+        if (res && res.data && res.data.length > 0) {
+          usedApi = true;
           for (const match of res.data) {
             const playerStats = match.players.all_players.find(
               p => p.name === user.riotName && p.tag === user.riotTag
@@ -51,8 +44,7 @@ module.exports = {
             const legshots  = playerStats.stats.legshots  || 0;
             const totalShots = headshots + bodyshots + legshots;
 
-            // Detect win/loss: compare player's team with winning team
-            const playerTeam = playerStats.team?.toLowerCase(); // 'red' or 'blue'
+            const playerTeam = playerStats.team?.toLowerCase();
             const winningTeam = match.teams
               ? Object.entries(match.teams).find(([, t]) => t?.has_won === true)?.[0]?.toLowerCase()
               : null;
@@ -65,6 +57,8 @@ module.exports = {
               kills:       playerStats.stats.kills,
               deaths:      playerStats.stats.deaths,
               assists:     playerStats.stats.assists,
+              score:       playerStats.stats.score, // Thêm score để tính ACS
+              rounds:      match.metadata.rounds_played,
               headshots, bodyshots, legshots,
               headshotPct: totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0,
               createdAt:   new Date(match.metadata.game_start * 1000),
@@ -72,8 +66,16 @@ module.exports = {
             });
           }
         }
+      } catch (err) {
+        console.error(`[COACH] Lỗi lấy API: ${err.message}. Chuyển sang dùng DB...`);
       }
 
+      // 3. Fallback: Nếu API lỗi, lấy từ DB
+      if (!usedApi || matchDetails.length === 0) {
+        matchDetails = await MatchDetail.find({ discordId: user.discordId })
+          .sort({ createdAt: -1 })
+          .limit(10);
+      }
 
       if (matchDetails.length === 0) {
         return interaction.editReply('❌ Không đủ dữ liệu để phân tích. Hãy chơi thêm vài trận rồi thử lại!');
@@ -175,10 +177,12 @@ module.exports = {
         kills:       m.kills,
         deaths:      m.deaths,
         assists:     m.assists,
+        score:       m.score || 0,
+        rounds:      m.rounds || 0,
         headshotPct: m.headshotPct,
         playedAt:    m.createdAt,
         won:         m.won ?? null,
-      })).reverse();
+      })); // KHÔNG reverse để UI giữ đúng thứ tự mới nhất (top) xuống cũ nhất (bottom)
 
       // 7. Upsert Report vào DB (1 report duy nhất / user)
       await Report.findOneAndUpdate(

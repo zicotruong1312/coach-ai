@@ -141,9 +141,15 @@ function MatchRow({ match, idx }) {
         <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: 4 }}>{timeAgo} // Competitive</div>
       </div>
 
+      {/* K/D */}
+      <div style={{ textAlign: 'center', padding: '12px 14px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 70 }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>K/D</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: kdColor }}>{kd}</div>
+      </div>
+
       {/* K/D/A */}
-      <div style={{ textAlign: 'center', padding: '12px 16px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 110 }}>
-        <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>K / D / A</div>
+      <div style={{ textAlign: 'center', padding: '12px 16px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 120 }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>K/D/A</div>
         <div style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
           <span style={{ color: 'var(--text)' }}>{k}</span>
           <span style={{ color: 'var(--text-dim)', margin: '0 3px' }}>/</span>
@@ -153,16 +159,18 @@ function MatchRow({ match, idx }) {
         </div>
       </div>
 
-      {/* K/D */}
-      <div style={{ textAlign: 'center', padding: '12px 14px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
-        <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>K/D</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: kdColor }}>{kd}</div>
+      {/* HS% */}
+      <div style={{ textAlign: 'center', padding: '12px 16px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 70 }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>HS%</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: parseFloat(hs) >= 25 ? 'var(--teal)' : 'var(--text)' }}>{match.headshotPct ?? '—'}</div>
       </div>
 
-      {/* HS% */}
-      <div style={{ textAlign: 'center', padding: '12px 16px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
-        <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>HS%</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: parseFloat(hs) >= 25 ? 'var(--teal)' : 'var(--text)' }}>{hs}</div>
+      {/* ACS */}
+      <div style={{ textAlign: 'center', padding: '12px 16px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 70 }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>ACS</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>
+          {match.rounds > 0 && match.score > 0 ? Math.round(match.score / match.rounds) : '—'}
+        </div>
       </div>
     </div>
   )
