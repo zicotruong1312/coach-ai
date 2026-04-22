@@ -40,8 +40,11 @@ const reportSchema = new mongoose.Schema({
       kills:        Number,
       deaths:       Number,
       assists:      Number,
+      score:        Number,
+      rounds:       Number,
       headshotPct:  Number,
       playedAt:     Date,
+      won:          Boolean,
     }]
   },
 
