@@ -18,11 +18,19 @@ const reportSchema = new mongoose.Schema({
     avgAssists:    { type: Number, default: 0 },
     kd:            { type: Number, default: 0 },
     avgHeadshotPct:{ type: Number, default: 0 },
+    avgBodyPct:    { type: Number, default: 0 },
+    avgLegPct:     { type: Number, default: 0 },
     kdTrend:       { type: Number, default: 0 },
     hsTrend:       { type: Number, default: 0 },
     avgFirstKills: { type: Number, default: 0 },
     avgFirstDeaths:{ type: Number, default: 0 },
-    topAgents:     [String],
+    topAgents:     [{
+      name: String,
+      matches: Number,
+      kd: Number,
+      hsPct: Number,
+      winPct: Number,
+    }],
     topMaps:       [String],
     // Mảng từng trận để vẽ biểu đồ
     matchHistory: [{

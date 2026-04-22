@@ -58,6 +58,9 @@ module.exports = {
               kills:       playerStats.stats.kills,
               deaths:      playerStats.stats.deaths,
               assists:     playerStats.stats.assists,
+              headshots:   headshots,
+              bodyshots:   bodyshots,
+              legshots:    legshots,
               headshotPct: totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0,
               createdAt:   new Date(match.metadata.game_start * 1000),
             });
@@ -77,15 +80,44 @@ module.exports = {
       const totalAssists = matchDetails.reduce((s, m) => s + (m.assists || 0), 0);
       const totalHS      = matchDetails.reduce((s, m) => s + (m.headshotPct || 0), 0);
 
-      // Đếm tần suất agent và map
-      const agentCount = {};
+      // Thống kê Hit Distribution (Tỉ lệ trúng các bộ phận)
+      const sumHS = matchDetails.reduce((s, m) => s + (m.headshots || 0), 0);
+      const sumBS = matchDetails.reduce((s, m) => s + (m.bodyshots || 0), 0);
+      const sumLS = matchDetails.reduce((s, m) => s + (m.legshots || 0), 0);
+      const totalHits = sumHS + sumBS + sumLS;
+      
+      const avgBodyPct = totalHits > 0 ? Math.round((sumBS / totalHits) * 100) : 0;
+      const avgLegPct  = totalHits > 0 ? Math.round((sumLS / totalHits) * 100) : 0;
+      // Dùng avgHS thực tế (tổng / số trận) thay vì tính từ totalHits để đồng nhất với display, 
+      // hoặc lấy theo totalHits (chuẩn hơn). Dùng K/D, số trận..
+      
+      // Đếm tần suất agent và tính toán chi tiết mỗi agent
+      const agentStats = {};
       const mapCount   = {};
       matchDetails.forEach(m => {
-        agentCount[m.agent] = (agentCount[m.agent] || 0) + 1;
-        mapCount[m.map]     = (mapCount[m.map]     || 0) + 1;
+        if (!agentStats[m.agent]) {
+          agentStats[m.agent] = { name: m.agent, matches: 0, kills: 0, deaths: 0, hsTotal: 0 };
+        }
+        agentStats[m.agent].matches += 1;
+        agentStats[m.agent].kills += (m.kills || 0);
+        agentStats[m.agent].deaths += (m.deaths || 0);
+        agentStats[m.agent].hsTotal += (m.headshotPct || 0);
+
+        mapCount[m.map] = (mapCount[m.map] || 0) + 1;
       });
-      const topAgents = Object.entries(agentCount).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
-      const topMaps   = Object.entries(mapCount).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
+
+      const topAgents = Object.values(agentStats)
+        .sort((a, b) => b.matches - a.matches)
+        .slice(0, 3)
+        .map(a => ({
+          name: a.name,
+          matches: a.matches,
+          kd: a.deaths > 0 ? +(a.kills / a.deaths).toFixed(2) : a.kills,
+          hsPct: Math.round(a.hsTotal / a.matches),
+          winPct: 0 // Chưa map với win/loss, để 0 làm placeholder
+        }));
+
+      const topMaps = Object.entries(mapCount).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
 
       const avgKills   = +(totalKills   / count).toFixed(1);
       const avgDeaths  = +(totalDeaths  / count).toFixed(1);
@@ -120,7 +152,8 @@ module.exports = {
         matchCount: count,
         avgKills, avgDeaths, avgAssists,
         kd, avgHeadshotPct: avgHS,
-        kdTrend, hsTrend, // <== Added trend
+        avgBodyPct, avgLegPct, // <== Added Accuracy
+        kdTrend, hsTrend,
         avgFirstKills: 0, avgFirstDeaths: 0, // placeholder
         topAgents, topMaps,
       };

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import {
-  ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
 import '../index.css'
@@ -10,7 +11,14 @@ import '../index.css'
 const API = import.meta.env.VITE_API_URL || 'https://coach-ai-t2ks.onrender.com'
 
 /* ─── Helpers ─── */
-const ratingColor = (r) => r >= 8 ? '#55efc4' : r >= 5 ? '#ffeaa7' : '#ff6b6b'
+const ratingColor = (r) =>
+  r >= 8 ? 'var(--teal)' : r >= 5 ? 'var(--yellow)' : 'var(--red)'
+
+const ratingGrade = (r) =>
+  r >= 9 ? 'S' : r >= 7 ? 'A' : r >= 5 ? 'B' : 'C'
+
+const winrateClass = (pct) =>
+  pct >= 55 ? 'winrate-high' : pct >= 45 ? '' : 'winrate-low'
 
 const agentIcons = {
   Jett: '🌪️', Reyna: '👁️', Sage: '🌿', Sova: '🏹', Brimstone: '🔥',
@@ -20,45 +28,95 @@ const agentIcons = {
   Deadlock: '🔗', Iso: '🧱', Clove: '🍀', Vyse: '🕸️',
 }
 
-/* ─── Sub-components ─── */
-function StatCard({ icon, label, value, sub, color, trend }) {
-  // trend > 0 ? xanh chữ, < 0 ? đỏ chữ
-  const isPositive = trend > 0;
-  const isNegative = trend < 0;
-  const trendColor = isPositive ? 'var(--green)' : isNegative ? 'var(--red)' : 'var(--text-muted)';
-  const trendArrow = isPositive ? '▲' : isNegative ? '▼' : '—';
-  const displayTrend = trend ? `${trendArrow} ${Math.abs(trend)}` : null;
+const mapEmojis = {
+  Fracture: '⚡', Breeze: '🏝️', Bind: '🏺', Split: '🕌', Haven: '⛩️',
+  Pearl: '🌊', Lotus: '🌸', Icebox: '❄️', Abyss: '🌑', Ascent: '🗺️',
+}
 
+/* ─── Navbar ─── */
+function Navbar({ riotName, riotTag }) {
   return (
-    <div className="card fade-up" style={{
-      display: 'flex', flexDirection: 'column', gap: '8px',
-      animation: 'fadeUp 0.4s ease both',
-      borderLeft: `3px solid ${color || 'var(--purple)'}`,
-      position: 'relative'
-    }}>
-      <span style={{ fontSize: '1.5rem' }}>{icon}</span>
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-      <span style={{ fontSize: '2rem', fontWeight: 900, color: color || 'var(--text)' }}>{value}</span>
-      {sub && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{sub}</span>}
-      {displayTrend && (
-        <div style={{ position: 'absolute', top: 16, right: 16, fontSize: '0.85rem', fontWeight: 700, color: trendColor }}>
-          {displayTrend}
-        </div>
+    <nav className="navbar">
+      <a className="navbar-brand" href="/">
+        <div className="brand-icon">🎯</div>
+        CoachAI
+      </a>
+      <div className="navbar-divider" />
+      {riotName && (
+        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text)' }}>
+          {riotName}
+          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>#{riotTag}</span>
+        </span>
       )}
+      <div className="navbar-spacer" />
+      <div className="live-badge">Live</div>
+    </nav>
+  )
+}
+
+/* ─── Section Header ─── */
+function SectionHeader({ title, action }) {
+  return (
+    <div className="section-header">
+      <div className="section-title">{title}</div>
+      {action && <span className="section-link">{action}</span>}
     </div>
   )
 }
 
-function SectionTitle({ children }) {
+/* ─── Stat Row Item ─── */
+function StatRowItem({ label, value, sub, pctColor }) {
   return (
-    <h2 style={{
-      fontSize: '1.1rem', fontWeight: 700, color: 'var(--purple-lt)',
-      textTransform: 'uppercase', letterSpacing: '0.1em',
-      display: 'flex', alignItems: 'center', gap: '8px',
-      borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px'
-    }}>
-      {children}
-    </h2>
+    <div className="stat-row-item fade-up">
+      <div className="stat-row-label">{label}</div>
+      <div className="stat-row-value" style={pctColor ? { color: pctColor } : {}}>{value}</div>
+      {sub && <div className="stat-row-sub">{sub}</div>}
+    </div>
+  )
+}
+
+/* ─── Match Row ─── */
+function MatchRow({ match, idx }) {
+  const isWin = match.result === 'Win' || match.result === 'W'
+  const agent = match.agent || '?'
+  const map = match.map || 'Unknown'
+  const ks = match.kills ?? '—'
+  const ds = match.deaths ?? '—'
+  const as_ = match.assists ?? '—'
+  const hs = match.headshotPct != null ? `${match.headshotPct}%` : '—'
+
+  return (
+    <div className={`match-row fade-up ${isWin ? 'win' : 'loss'}`}>
+      <div className={`match-result-badge ${isWin ? 'win' : 'loss'}`}>
+        {isWin ? 'W' : 'L'}
+      </div>
+
+      <div className="match-agent-icon">{agentIcons[agent] || '🎯'}</div>
+
+      <div className="match-info">
+        <div className="match-map">{mapEmojis[map] || '🗺️'} {map}</div>
+        <div className="match-mode">#{idx + 1} · Competitive</div>
+      </div>
+
+      <div className="match-stat">
+        <div className="match-stat-label">K/D/A</div>
+        <div className="match-stat-value" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          {ks} / {ds} / {as_}
+        </div>
+      </div>
+
+      <div className="match-stat">
+        <div className="match-stat-label">K/D</div>
+        <div className="match-stat-value" style={{ color: ds > 0 && ks / ds >= 1 ? 'var(--teal)' : 'var(--red)' }}>
+          {ds > 0 ? (ks / ds).toFixed(1) : ks}
+        </div>
+      </div>
+
+      <div className="match-stat">
+        <div className="match-stat-label">HS%</div>
+        <div className="match-stat-value">{hs}</div>
+      </div>
+    </div>
   )
 }
 
@@ -66,8 +124,9 @@ function SectionTitle({ children }) {
 export default function ReportPage() {
   const { discordId } = useParams()
   const [report, setReport] = useState(null)
-  const [error,  setError]  = useState(null)
+  const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     axios.get(`${API}/api/report/${discordId}`)
@@ -79,330 +138,491 @@ export default function ReportPage() {
   }, [discordId])
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px' }}>
-      <div className="spinner" />
-      <p style={{ color: 'var(--text-muted)' }}>Đang tải báo cáo...</p>
-    </div>
+    <>
+      <Navbar />
+      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px' }}>
+        <div className="spinner" />
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Đang tải báo cáo...</p>
+      </div>
+    </>
   )
 
   if (error) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', textAlign: 'center', padding: '24px' }}>
-      <span style={{ fontSize: '4rem' }}>😔</span>
-      <h2 style={{ color: 'var(--red)' }}>Chưa có báo cáo</h2>
-      <p style={{ color: 'var(--text-muted)', maxWidth: '400px' }}>{error}</p>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-        Hãy dùng lệnh <strong style={{ color: 'var(--purple-lt)' }}>/coach</strong> trên Discord để tạo báo cáo!
-      </p>
-    </div>
+    <>
+      <Navbar />
+      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', textAlign: 'center', padding: '40px 24px' }}>
+        <span style={{ fontSize: '3rem' }}>😔</span>
+        <h2 style={{ color: 'var(--red)', fontWeight: 800 }}>Chưa có báo cáo</h2>
+        <p style={{ color: 'var(--text-muted)', maxWidth: '420px', fontSize: '0.875rem', lineHeight: 1.7 }}>{error}</p>
+        <div className="card card-sm" style={{ maxWidth: '340px', textAlign: 'left' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '6px' }}>
+            💡 Dùng lệnh này trên Discord:
+          </p>
+          <code style={{ color: 'var(--teal)', fontSize: '0.875rem', fontWeight: 700 }}>/coach</code>
+        </div>
+      </div>
+    </>
   )
 
   const { stats, aiAnalysis, riotName, riotTag, lastUpdatedAt } = report
   const ai = aiAnalysis || {}
-  const s  = stats     || {}
+  const s  = stats || {}
+  const matchHistory = s.matchHistory || []
+
+  const wins = matchHistory.filter(m => m.result === 'Win' || m.result === 'W').length
+  const losses = matchHistory.length - wins
+  const winPct = matchHistory.length ? Math.round((wins / matchHistory.length) * 100) : 0
 
   const radarData = [
-    { subject: 'AIM',           A: ai.radarScores?.aim          || 50 },
-    { subject: 'MOVEMENT',      A: ai.radarScores?.movement      || 50 },
-    { subject: 'ABILITY USAGE', A: ai.radarScores?.abilityUsage  || 50 },
-    { subject: 'GAME SENSE',    A: ai.radarScores?.gameSense     || 50 },
-    { subject: 'TEAM PLAY',     A: ai.radarScores?.teamPlay      || 50 },
+    { subject: 'AIM',     A: ai.radarScores?.aim         || 50 },
+    { subject: 'MOVEMENT', A: ai.radarScores?.movement    || 50 },
+    { subject: 'ABILITY', A: ai.radarScores?.abilityUsage || 50 },
+    { subject: 'SENSE',   A: ai.radarScores?.gameSense    || 50 },
+    { subject: 'TEAM',    A: ai.radarScores?.teamPlay     || 50 },
   ]
 
-  const matchHistory = (s.matchHistory || []).map((m, i) => ({
-    name: `#${i + 1} ${m.map || ''}`,
-    Kills: m.kills, Deaths: m.deaths, Assists: m.assists,
+  const chartData = matchHistory.map((m, i) => ({
+    name: `#${i + 1}`,
+    Kills: m.kills,
+    Deaths: m.deaths,
+    Assists: m.assists,
     HS: m.headshotPct,
   }))
 
+  const tabs = ['overview', 'matches', 'agents', 'training']
+  const tabLabels = { overview: 'Overview', matches: 'Matches', agents: 'Agents & Maps', training: 'Training Plan' }
+
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 20px 80px', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+    <>
+      <Navbar riotName={riotName} riotTag={riotTag} />
 
-      {/* ── HERO HEADER ── */}
-      <div className="card" style={{
-        background: 'linear-gradient(135deg, #14142b 0%, #1e1040 100%)',
-        borderColor: 'var(--purple)', animation: 'pulse-glow 3s ease-in-out infinite',
-        display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center'
-      }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--purple), var(--cyan))',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '2rem', fontWeight: 900, color: '#fff', flexShrink: 0,
-        }}>
-          {(riotName || '?')[0].toUpperCase()}
-        </div>
+      {/* ── PROFILE BANNER ── */}
+      <div className="profile-banner">
+        <div className="profile-inner">
+          <div className="profile-top">
+            <div className="profile-avatar">
+              {(riotName || '?')[0].toUpperCase()}
+            </div>
 
-        <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1.2 }}>
-            <span className="gradient-text">{riotName}</span>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '1.1rem' }}>#{riotTag}</span>
-          </h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: '4px', fontSize: '0.875rem' }}>
-            Báo cáo dựa trên <strong style={{ color: 'var(--purple-lt)' }}>{s.matchCount || 0} trận</strong> gần nhất
-            {' · '}
-            Cập nhật: <strong style={{ color: 'var(--cyan)' }}>{new Date(lastUpdatedAt).toLocaleString('vi-VN')}</strong>
-          </p>
-        </div>
+            <div className="profile-info">
+              <div className="profile-name">
+                {riotName}
+                <span className="profile-tag">#{riotTag}</span>
+              </div>
+              <div className="profile-meta">
+                <span className="profile-meta-item">
+                  📊 <strong>{s.matchCount || 0}</strong> trận đã phân tích
+                </span>
+                <span className="sep-dot">·</span>
+                <span className="profile-meta-item">
+                  🕐 Cập nhật <strong>{new Date(lastUpdatedAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</strong>
+                </span>
+              </div>
+            </div>
 
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontSize: '3rem', fontWeight: 900,
-            color: ratingColor(ai.overallRating || 5),
-          }}>
-            {ai.overallRating || '—'}<span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/10</span>
+            {/* Overall Rating */}
+            <div className="rating-badge">
+              <div className="rating-val" style={{ color: ratingColor(ai.overallRating || 5) }}>
+                {ai.overallRating || '—'}
+                <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 500 }}>/10</span>
+              </div>
+              <div className="rating-label">AI Rating</div>
+              <span className={`badge badge-${ratingGrade(ai.overallRating || 5) === 'S' ? 'yellow' : ratingGrade(ai.overallRating || 5) === 'A' ? 'teal' : 'blue'}`} style={{ marginTop: 4 }}>
+                {ratingGrade(ai.overallRating || 5)} Tier
+              </span>
+            </div>
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px' }}>OVERALL RATING</div>
+
+          {/* Profile Tabs */}
+          <div className="profile-tabs">
+            {tabs.map(t => (
+              <div
+                key={t}
+                className={`profile-tab ${activeTab === t ? 'active' : ''}`}
+                onClick={() => setActiveTab(t)}
+              >
+                {tabLabels[t]}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── STAT CARDS ── */}
-      <div>
-         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px' }}>
-          <h2 style={{
-            fontSize: '1.1rem', fontWeight: 700, color: 'var(--purple-lt)',
-            textTransform: 'uppercase', letterSpacing: '0.1em',
-            display: 'flex', alignItems: 'center', gap: '8px',
-            margin: 0, padding: 0, border: 'none'
-          }}>
-            📊 Thống Kê Tổng Hợp
-          </h2>
-          {s.matchCount > 5 && (
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trend so với 5 trận trước</span>
-          )}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px' }}>
-          <StatCard icon="⚔️" label="K/D"      value={s.kd || '—'}              color="var(--purple)" trend={s.kdTrend} />
-          <StatCard icon="💀" label="Kills/Trận" value={s.avgKills || '—'}        color="var(--red)" />
-          <StatCard icon="🎯" label="Headshot %"  value={`${s.avgHeadshotPct || 0}%`} color="var(--cyan)" trend={s.hsTrend} />
-          <StatCard icon="🤝" label="Assists/Trận" value={s.avgAssists || '—'}   color="var(--green)" />
-          <StatCard icon="📦" label="Deaths/Trận" value={s.avgDeaths || '—'}      color="var(--orange)" />
-          <StatCard icon="🗺️" label="Matches"    value={s.matchCount || 0}        color="var(--yellow)" />
-        </div>
-      </div>
+      {/* ── CONTENT ── */}
+      <div className="page-wrapper" style={{ paddingTop: '28px' }}>
 
-      {/* ── MATCH HISTORY CHART ── */}
-      {matchHistory.length > 0 && (
-        <div>
-          <SectionTitle>📈 Lịch Sử Trận Đấu</SectionTitle>
-          <div className="card">
-            <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={matchHistory} margin={{ top: 5, right: 10, bottom: 20, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} angle={-30} textAnchor="end" />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }} />
-                <Legend wrapperStyle={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
-                <Area type="monotone" dataKey="Deaths" fill="var(--red)" stroke="var(--red)" fillOpacity={0.2} strokeWidth={2} />
-                <Bar dataKey="Kills" barSize={20} fill="var(--purple-lt)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Assists" barSize={20} fill="var(--cyan)" radius={[4, 4, 0, 0]} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+        {/* ════════════ OVERVIEW TAB ════════════ */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Competitive Overview Banner */}
+            <div className="section">
+              <div className="overview-banner">
+                <div className="overview-banner-left">
+                  <div className="wl-ring">
+                    <span className="wins">{wins}W</span>
+                    <span className="losses">{losses}L</span>
+                  </div>
+                  <div>
+                    <div className="overview-title">Competitive Overview</div>
+                    <div className="overview-value">{winPct}% <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 500 }}>Win Rate</span></div>
+                    <div className="overview-sub">{matchHistory.length} trận · {Math.round(matchHistory.length * 0.6)} giờ playtime (ước tính)</div>
+                  </div>
+                </div>
 
-      {/* ── RADAR + PLAYSTYLE ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+                {/* Playstyle */}
+                {ai.playstyleType && (
+                  <>
+                    <div style={{ width: 1, height: 48, background: 'var(--border)' }} />
+                    <div>
+                      <div className="overview-title">Phong cách</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--red)', marginTop: 4 }}>{ai.playstyleType}</div>
+                      <div className="overview-sub">{ai.proPlayerMatch ? `Giống ${ai.proPlayerMatch}` : ''}</div>
+                    </div>
+                  </>
+                )}
 
-        {/* Radar Chart */}
-        <div>
-          <SectionTitle>🕸️ Năng Lực 5 Chiều</SectionTitle>
-          <div className="card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <ResponsiveContainer width="100%" height={320}>
-              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
-                <PolarGrid stroke="var(--border)" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }} />
-                <PolarRadiusAxis angle={90} domain={[0, 10]} tick={false} axisLine={false} />
-                <Radar name="Bạn" dataKey="A" stroke="var(--purple)" fill="var(--purple)" fillOpacity={0.4} strokeWidth={2.5} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Playstyle + Pro Match */}
-        <div>
-          <SectionTitle>🌟 Phong Cách & Hình Mẫu</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="card" style={{ borderLeft: '3px solid var(--purple)' }}>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Phong cách</p>
-              <p style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--purple-lt)', marginTop: '4px' }}>{ai.playstyleType || '—'}</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '8px' }}>{ai.playstyleDesc || ''}</p>
-            </div>
-
-            <div className="card" style={{ borderLeft: '3px solid var(--cyan)' }}>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Hình mẫu Pro</p>
-              <p style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--cyan)', marginTop: '4px' }}>⚡ {ai.proPlayerMatch || '—'}</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '8px' }}>{ai.proPlayerReason || ''}</p>
-            </div>
-
-            <div className="card" style={{ borderLeft: '3px solid var(--green)' }}>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Coach Yêu Cầu Pick</p>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
-                {(ai.recommendedAgents || []).map(agent => (
-                  <span key={agent} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {agentIcons[agent] || '👤'} {agent}
-                  </span>
-                ))}
-                {(!ai.recommendedAgents || ai.recommendedAgents.length === 0) && (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Đang chờ nâng cấp dữ liệu...</span>
+                {/* Pro Match */}
+                {ai.proPlayerMatch && (
+                  <>
+                    <div style={{ width: 1, height: 48, background: 'var(--border)' }} />
+                    <div>
+                      <div className="overview-title">Hình mẫu Pro</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--teal)', marginTop: 4 }}>⚡ {ai.proPlayerMatch}</div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ── STRENGTHS & WEAKNESSES ── */}
-      <div>
-        <SectionTitle>💪 Điểm Mạnh & Điểm Yếu</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-
-          <div className="card">
-            <h3 style={{ color: 'var(--green)', marginBottom: '16px', fontWeight: 700 }}>✅ Điểm Mạnh</h3>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {(ai.strengths || []).map((s, i) => (
-                <li key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <span style={{ color: 'var(--green)', marginTop: '2px', flexShrink: 0 }}>▶</span>
-                  <span style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{s}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="card">
-            <h3 style={{ color: 'var(--red)', marginBottom: '16px', fontWeight: 700 }}>⚠️ Điểm Cần Cải Thiện</h3>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {(ai.weaknesses || []).map((w, i) => (
-                <li key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <span style={{ color: 'var(--red)', marginTop: '2px', flexShrink: 0 }}>▶</span>
-                  <span style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{w}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 3-DAY TRAINING PLAN ── */}
-      <div>
-        <SectionTitle>🗓️ Lộ Trình Bài Tập 3 Ngày</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-          {(ai.trainingPlan || []).map((day) => (
-            <div key={day.day} className="card" style={{ borderTop: '3px solid var(--purple)', padding: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--purple), var(--cyan))',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 900, fontSize: '1rem', color: '#fff', flexShrink: 0,
-                }}>{day.day}</span>
-                <span style={{ fontWeight: 800, color: 'var(--purple-lt)', fontSize: '1.1rem' }}>{day.focus}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {(day.tasks || []).map((task, i) => {
-                  // Hỗ trợ cả chuẩn cũ (string) và mới (object)
-                  if (typeof task === 'string') {
-                    return (
-                      <div key={i} style={{ display: 'flex', gap: '10px', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                        <span style={{ color: 'var(--cyan)', flexShrink: 0 }}>→</span>
-                        <span>{task}</span>
-                      </div>
-                    )
-                  }
-                  
-                  // Chuẩn mới (Object) rendering dạng Accordion (details/summary)
-                  return (
-                    <details key={i} style={{
-                      background: 'var(--bg-card2)', border: '1px solid var(--border)',
-                      borderRadius: '8px', overflow: 'hidden'
-                    }}>
-                      <summary style={{
-                        padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
-                        display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)'
-                      }}>
-                        <span style={{ color: 'var(--cyan)' }}>▶</span> {task.name || 'Bài tập'}
-                      </summary>
-                      <div style={{ padding: '0 12px 12px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '4px' }}>👤 Agent: <span style={{color: 'var(--purple-lt)', fontWeight: 600}}>{task.agent || 'Any'}</span></span>
-                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '4px' }}>🎮 Mode: <span style={{color: 'var(--cyan)', fontWeight: 600}}>{task.mode || 'N/A'}</span></span>
-                          <span style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '4px' }}>⏱️ Time: <span style={{color: 'var(--green)', fontWeight: 600}}>{task.duration || 'N/A'}</span></span>
-                        </div>
-                        <p style={{ marginTop: '4px' }}>{task.description || ''}</p>
-                        {task.videoUrl && (
-                          <a href={task.videoUrl} target="_blank" rel="noreferrer" style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '6px',
-                            color: 'var(--red)', fontWeight: 700, textDecoration: 'none', marginTop: '4px',
-                            padding: '6px 12px', background: 'rgba(255, 107, 107, 0.1)', borderRadius: '4px', alignSelf: 'flex-start'
-                          }}>
-                            ▶️ Xem Video Minh Họa
-                          </a>
-                        )}
-                      </div>
-                    </details>
-                  )
-                })}
+            {/* Primary Stat Row */}
+            <div className="section">
+              <SectionHeader title="Thống Kê Chính" />
+              <div className="stat-row">
+                <StatRowItem
+                  label="K/D Ratio"
+                  value={s.kd || '—'}
+                  sub={s.kdTrend ? `${s.kdTrend > 0 ? '▲' : '▼'} ${Math.abs(s.kdTrend)} vs 5 trận trước` : 'Last 5 avg'}
+                  pctColor={s.kd >= 1 ? 'var(--teal)' : 'var(--red)'}
+                />
+                <StatRowItem label="Headshot %" value={`${s.avgHeadshotPct || 0}%`} sub="Avg all matches" pctColor={s.avgHeadshotPct >= 25 ? 'var(--teal)' : 'var(--yellow)'} />
+                <StatRowItem label="Kills / Round" value={s.avgKills || '—'} sub="Per match avg" />
+                <StatRowItem label="Deaths / Round" value={s.avgDeaths || '—'} sub="Per match avg" />
+                <StatRowItem label="Assists / Round" value={s.avgAssists || '—'} sub="Per match avg" />
+                <StatRowItem label="Win %" value={`${winPct}%`} sub={`${wins}W – ${losses}L`} pctColor={winPct >= 50 ? 'var(--teal)' : 'var(--red)'} />
               </div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* ── TOP AGENTS & MAPS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-        <div>
-          <SectionTitle>🎮 Đặc Vụ Hay Dùng</SectionTitle>
-          <div className="card" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            {(s.topAgents || []).map((agent, i) => (
-              <div key={agent} style={{
-                padding: '12px 20px', borderRadius: '8px',
-                background: i === 0 ? 'var(--purple)' : 'var(--bg-card2)',
-                border: '1px solid var(--border)', fontWeight: 700, fontSize: '0.95rem',
-              }}>
-                {agentIcons[agent] || '🎯'} {agent}
+            {/* Tracker Score + Radar Row */}
+            <div className="section" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+              {/* Radar */}
+              <div>
+                <SectionHeader title="5 Chiều Năng Lực" />
+                <div className="radar-wrapper" style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
+                      <PolarGrid stroke="var(--border)" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 11, fontWeight: 700 }} />
+                      <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Radar name="Bạn" dataKey="A" stroke="var(--red)" fill="var(--red)" fillOpacity={0.25} strokeWidth={2} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div>
-          <SectionTitle>🗺️ Map Thường Chơi</SectionTitle>
-          <div className="card" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            {(s.topMaps || []).map((map, i) => (
-              <div key={map} style={{
-                padding: '12px 20px', borderRadius: '8px',
-                background: i === 0 ? 'rgba(0,206,201,0.2)' : 'var(--bg-card2)',
-                border: '1px solid var(--border)', fontWeight: 700, fontSize: '0.95rem',
-              }}>
-                🗺️ {map}
+              {/* Strengths & Weaknesses */}
+              <div>
+                <SectionHeader title="Điểm Mạnh & Yếu" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="card card-sm">
+                    <div style={{ color: 'var(--teal)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>✅ Điểm Mạnh</div>
+                    <div className="insight-list">
+                      {(ai.strengths || []).map((str, i) => (
+                        <div key={i} className="insight-item strength">
+                          <span className="insight-bullet" style={{ color: 'var(--green)' }}>▶</span>
+                          <span>{str}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="card card-sm">
+                    <div style={{ color: 'var(--red)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>⚠️ Cần Cải Thiện</div>
+                    <div className="insight-list">
+                      {(ai.weaknesses || []).map((w, i) => (
+                        <div key={i} className="insight-item weakness">
+                          <span className="insight-bullet" style={{ color: 'var(--red)' }}>▶</span>
+                          <span>{w}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+
+            {/* AI Summary */}
+            <div className="section">
+              <SectionHeader title="Nhận Xét Từ AI Coach" />
+              <div className="ai-card">
+                <p className="ai-quote">"{ai.summary || 'Không có nhận xét.'}"</p>
+                <div className="ai-attribution">
+                  <span>🤖</span> Gemini AI Coach · {new Date(lastUpdatedAt).toLocaleString('vi-VN', { dateStyle: 'medium' })}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ════════════ MATCHES TAB ════════════ */}
+        {activeTab === 'matches' && (
+          <>
+            {/* Performance Chart */}
+            {chartData.length > 0 && (
+              <div className="section">
+                <SectionHeader title="Performance Chart" />
+                <div className="card">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 10, left: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.8rem' }}
+                        labelStyle={{ color: 'var(--text)', fontWeight: 700 }}
+                        itemStyle={{ color: 'var(--text-muted)' }}
+                      />
+                      <Legend wrapperStyle={{ color: 'var(--text-muted)', fontSize: '0.75rem', paddingTop: '8px' }} />
+                      <Area type="monotone" dataKey="Deaths" fill="var(--red)" stroke="var(--red)" fillOpacity={0.15} strokeWidth={1.5} dot={false} />
+                      <Bar dataKey="Kills" barSize={16} fill="var(--red)" radius={[3, 3, 0, 0]} opacity={0.85} />
+                      <Line type="monotone" dataKey="HS" stroke="var(--teal)" strokeWidth={2} dot={false} name="HS%" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {/* Match List */}
+            <div className="section">
+              <SectionHeader title={`Last ${matchHistory.length} Matches`} />
+              {matchHistory.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  Chưa có lịch sử trận đấu
+                </div>
+              ) : (
+                <div className="match-list">
+                  {matchHistory.map((m, i) => (
+                    <MatchRow key={i} match={m} idx={i} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ════════════ AGENTS & MAPS TAB ════════════ */}
+        {activeTab === 'agents' && (
+          <>
+            {/* Top Agents Table */}
+            <div className="section">
+              <SectionHeader title="Top Agents" action="View All" />
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <table className="agent-table">
+                  <thead>
+                    <tr>
+                      <th>Agent</th>
+                      <th>Matches</th>
+                      <th>Win %</th>
+                      <th>K/D</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(s.topAgents || []).map((agent, i) => (
+                      <tr key={agent}>
+                        <td>
+                          <div className="agent-name-cell">
+                            <span style={{ fontSize: '1.2rem' }}>{agentIcons[agent] || '🎯'}</span>
+                            <div>
+                              <div style={{ fontWeight: 700 }}>{agent}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                {i === 0 ? 'Main' : i === 1 ? 'Secondary' : 'Flex'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ color: 'var(--text-muted)' }}>—</td>
+                        <td>
+                          <span className={winrateClass(55)}>—</span>
+                        </td>
+                        <td>—</td>
+                      </tr>
+                    ))}
+                    {(!s.topAgents || s.topAgents.length === 0) && (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                          Chưa đủ dữ liệu
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Two column: Agents + Maps */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <SectionHeader title="Đặc Vụ Hay Dùng" />
+                <div className="mini-card-grid">
+                  {(s.topAgents || []).map((agent, i) => (
+                    <div key={agent} className={`mini-card ${i === 0 ? 'featured' : ''}`}>
+                      <div className="mini-card-icon">{agentIcons[agent] || '🎯'}</div>
+                      <div className="mini-card-name">{agent}</div>
+                      <div className="mini-card-sub">{i === 0 ? '⭐ Main' : `#${i + 1}`}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recommended Agents */}
+                {ai.recommendedAgents?.length > 0 && (
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                      Coach Gợi Ý
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {ai.recommendedAgents.map(agent => (
+                        <span key={agent} className="badge badge-teal">
+                          {agentIcons[agent] || '👤'} {agent}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <SectionHeader title="Map Thường Chơi" />
+                <div className="mini-card-grid">
+                  {(s.topMaps || []).map((map, i) => (
+                    <div key={map} className={`mini-card ${i === 0 ? 'featured' : ''}`}>
+                      <div className="mini-card-icon">{mapEmojis[map] || '🗺️'}</div>
+                      <div className="mini-card-name">{map}</div>
+                      <div className="mini-card-sub">{i === 0 ? '⭐ Best Map' : `#${i + 1}`}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ════════════ TRAINING PLAN TAB ════════════ */}
+        {activeTab === 'training' && (
+          <>
+            <div className="section">
+              <SectionHeader title="Lộ Trình Bài Tập 3 Ngày" />
+
+              {/* Playstyle + Pro Context */}
+              {(ai.playstyleType || ai.proPlayerMatch) && (
+                <div className="tracker-score-bar" style={{ marginBottom: '20px' }}>
+                  {ai.playstyleType && (
+                    <div className="trs-block">
+                      <div className="trs-label">Phong Cách</div>
+                      <div style={{ fontWeight: 800, color: 'var(--text)', fontSize: '1rem', marginTop: '4px' }}>{ai.playstyleType}</div>
+                    </div>
+                  )}
+                  {ai.proPlayerMatch && (
+                    <div className="trs-block">
+                      <div className="trs-label">Hình Mẫu Pro</div>
+                      <div style={{ fontWeight: 800, color: 'var(--teal)', fontSize: '1rem', marginTop: '4px' }}>⚡ {ai.proPlayerMatch}</div>
+                    </div>
+                  )}
+                  {ai.overallRating && (
+                    <div className="trs-block">
+                      <div className="trs-label">AI Score</div>
+                      <div className="trs-score" style={{ color: ratingColor(ai.overallRating) }}>{ai.overallRating}</div>
+                      <span className={`trs-grade ${ratingGrade(ai.overallRating)}`}>{ratingGrade(ai.overallRating)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                {(ai.trainingPlan || []).map((day) => (
+                  <div key={day.day} className="training-day">
+                    <div className="training-day-header">
+                      <div className="day-number">{day.day}</div>
+                      <div className="day-focus">{day.focus}</div>
+                      <span className="badge badge-red" style={{ marginLeft: 'auto' }}>Day {day.day}</span>
+                    </div>
+
+                    {(day.tasks || []).map((task, i) => {
+                      if (typeof task === 'string') {
+                        return (
+                          <div key={i} style={{ padding: '11px 20px', borderBottom: '1px solid var(--border)', fontSize: '0.875rem', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                            <span style={{ color: 'var(--red)', flexShrink: 0, marginTop: '2px' }}>→</span>
+                            <span style={{ color: 'var(--text)', lineHeight: 1.5 }}>{task}</span>
+                          </div>
+                        )
+                      }
+                      return (
+                        <details key={i} className="task-accordion">
+                          <summary>{task.name || 'Bài tập'}</summary>
+                          <div className="task-accordion-body">
+                            <div className="task-meta-row">
+                              <span className="task-meta">👤 Agent: <strong>{task.agent || 'Any'}</strong></span>
+                              <span className="task-meta">🎮 Mode: <strong>{task.mode || 'N/A'}</strong></span>
+                              <span className="task-meta">⏱️ Time: <strong>{task.duration || 'N/A'}</strong></span>
+                            </div>
+                            {task.description && (
+                              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>{task.description}</p>
+                            )}
+                            {task.videoUrl && (
+                              <a href={task.videoUrl} target="_blank" rel="noreferrer" style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                color: '#fff', background: 'var(--red)', fontWeight: 700, fontSize: '0.75rem',
+                                textDecoration: 'none', padding: '6px 12px', borderRadius: '4px',
+                              }}>
+                                ▶ Xem Video Minh Họa
+                              </a>
+                            )}
+                          </div>
+                        </details>
+                      )
+                    })}
+                  </div>
+                ))}
+
+                {(!ai.trainingPlan || ai.trainingPlan.length === 0) && (
+                  <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', gridColumn: '1/-1' }}>
+                    Chưa có lộ trình. Dùng <strong style={{ color: 'var(--red)' }}>/coach</strong> để tạo báo cáo!
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Pro Reason */}
+            {ai.proPlayerReason && (
+              <div className="section">
+                <SectionHeader title="Vì Sao Giống Pro Này?" />
+                <div className="ai-card">
+                  <p className="ai-quote">"{ai.proPlayerReason}"</p>
+                  <div className="ai-attribution">
+                    <span>⚡</span> AI Analysis · {ai.proPlayerMatch || 'Pro Archetype'}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── FOOTER ── */}
+        <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '40px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+          Báo cáo cập nhật mỗi khi bạn dùng <strong style={{ color: 'var(--red)' }}>/coach</strong> trên Discord
+          <span className="sep-dot">·</span>
+          Valorant AI Coach System
         </div>
+
       </div>
-
-      {/* ── AI SUMMARY ── */}
-      <div>
-        <SectionTitle>🤖 Nhận Xét Từ AI Coach</SectionTitle>
-        <div className="card" style={{
-          background: 'linear-gradient(135deg, rgba(108,92,231,0.1), rgba(0,206,201,0.05))',
-          borderColor: 'var(--purple)', position: 'relative', overflow: 'hidden',
-        }}>
-          <span style={{ fontSize: '5rem', position: 'absolute', right: '20px', top: '10px', opacity: 0.05 }}>💬</span>
-          <p style={{ fontSize: '1.05rem', lineHeight: 1.8, fontStyle: 'italic', color: 'var(--text)' }}>
-            "{ai.summary || 'Không có nhận xét.'}"
-          </p>
-          <p style={{ color: 'var(--purple-lt)', fontSize: '0.875rem', marginTop: '16px', fontWeight: 700 }}>
-            — Gemini AI Coach
-          </p>
-        </div>
-      </div>
-
-      {/* ── FOOTER ── */}
-      <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-        Báo cáo này cập nhật mỗi khi bạn dùng <strong style={{ color: 'var(--purple-lt)' }}>/coach</strong> trên Discord · Valorant AI Coach System
-      </p>
-
-    </div>
+    </>
   )
 }

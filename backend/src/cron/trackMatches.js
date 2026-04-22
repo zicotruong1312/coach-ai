@@ -57,7 +57,10 @@ const startTrackingJob = () => {
             kills: playerStats.stats.kills,
             deaths: playerStats.stats.deaths,
             assists: playerStats.stats.assists,
-            headshotPct: Math.round((playerStats.stats.headshots / (playerStats.stats.headshots + playerStats.stats.bodyshots + playerStats.stats.legshots)) * 100) || 0,
+            headshots: playerStats.stats.headshots || 0,
+            bodyshots: playerStats.stats.bodyshots || 0,
+            legshots: playerStats.stats.legshots || 0,
+            headshotPct: Math.round((playerStats.stats.headshots / ((playerStats.stats.headshots || 0) + (playerStats.stats.bodyshots || 0) + (playerStats.stats.legshots || 0))) * 100) || 0,
             deathLogs: deathLogs
           });
 
