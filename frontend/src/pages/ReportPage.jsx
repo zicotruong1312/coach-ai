@@ -9,7 +9,7 @@ import {
 import { agentImg, mapColor } from '../agentData'
 import '../index.css'
 
-const API = import.meta.env.VITE_API_URL || 'https://coach-ai-t2ks.onrender.com'
+const API = import.meta.env.VITE_API_URL || 'https://coach-ai-l2ks.onrender.com'
 
 /* ─── Helpers ─── */
 const ratingColor = (r) =>
