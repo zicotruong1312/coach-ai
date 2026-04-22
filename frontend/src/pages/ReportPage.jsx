@@ -96,44 +96,74 @@ function MatchRow({ match, idx }) {
   const kd = d > 0 ? (k / d).toFixed(1) : k.toString()
   const kdColor = parseFloat(kd) >= 1.0 ? 'var(--teal)' : 'var(--red)'
   const accentColor = mapColor(map)
+  const timeAgo = match.playedAt
+    ? (() => {
+        const diff = Date.now() - new Date(match.playedAt).getTime()
+        const h = Math.floor(diff / 3600000)
+        const d2 = Math.floor(h / 24)
+        return d2 > 0 ? `${d2} ngày trước` : h > 0 ? `${h} giờ trước` : 'Vừa xong'
+      })()
+    : `#${idx + 1}`
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 0,
+      display: 'flex', alignItems: 'stretch', gap: 0,
       background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderLeft: `4px solid ${isWin ? 'var(--teal)' : 'var(--red)'}`,
-      borderRadius: 6, marginBottom: 4, overflow: 'hidden',
+      borderLeft: `4px solid ${isWin ? '#18e5b0' : '#ff4655'}`,
+      borderRadius: 6, marginBottom: 4, overflow: 'hidden', minHeight: 72,
       transition: 'background 0.15s',
     }}
     onMouseEnter={e => e.currentTarget.style.background='var(--bg-hover)'}
     onMouseLeave={e => e.currentTarget.style.background='var(--bg-card)'}
     >
-      {/* Agent image */}
-      <div style={{ width: 64, height: 64, flexShrink: 0, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <AgentAvatar name={agent} size={56} />
+      {/* Result badge */}
+      <div style={{
+        width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        background: isWin ? 'rgba(24,229,176,0.08)' : 'rgba(255,70,85,0.08)',
+      }}>
+        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: isWin ? '#18e5b0' : '#ff4655', writingMode: 'vertical-rl', letterSpacing: '0.1em' }}>
+          {isWin ? 'WIN' : 'LOSS'}
+        </span>
       </div>
 
-      {/* Map + info */}
-      <div style={{ flex: 1, padding: '10px 14px', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Agent portrait */}
+      <div style={{ width: 72, flexShrink: 0, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <AgentAvatar name={agent} size={64} />
+      </div>
+
+      {/* Map + mode + time */}
+      <div style={{ flex: 1, padding: '12px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
-          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)' }}>{map}</span>
-          {agent && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>{agent}</span>}
+          <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text)' }}>{map}</span>
+          {agent && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-card2)', padding: '1px 7px', borderRadius: 3 }}>{agent}</span>}
         </div>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>#{idx + 1} · Competitive</div>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: 4 }}>{timeAgo} // Competitive</div>
       </div>
 
-      {/* Stats */}
-      {[
-        { label: 'K/D/A', value: `${k} / ${d} / ${a}`, color: 'var(--text)' },
-        { label: 'K/D',   value: kd,  color: kdColor },
-        { label: 'HS%',   value: hs,  color: parseFloat(hs) >= 25 ? 'var(--teal)' : 'var(--text)' },
-      ].map(({ label, value, color }) => (
-        <div key={label} style={{ textAlign: 'right', padding: '10px 16px', borderLeft: '1px solid var(--border)', minWidth: 70 }}>
-          <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
-          <div style={{ fontSize: '0.95rem', fontWeight: 700, color }}>{value}</div>
+      {/* K/D/A */}
+      <div style={{ textAlign: 'center', padding: '12px 16px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 110 }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>K / D / A</div>
+        <div style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          <span style={{ color: 'var(--text)' }}>{k}</span>
+          <span style={{ color: 'var(--text-dim)', margin: '0 3px' }}>/</span>
+          <span style={{ color: '#ff4655' }}>{d}</span>
+          <span style={{ color: 'var(--text-dim)', margin: '0 3px' }}>/</span>
+          <span style={{ color: 'var(--text-muted)' }}>{a}</span>
         </div>
-      ))}
+      </div>
+
+      {/* K/D */}
+      <div style={{ textAlign: 'center', padding: '12px 14px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>K/D</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: kdColor }}>{kd}</div>
+      </div>
+
+      {/* HS% */}
+      <div style={{ textAlign: 'center', padding: '12px 16px', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 5 }}>HS%</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: parseFloat(hs) >= 25 ? 'var(--teal)' : 'var(--text)' }}>{hs}</div>
+      </div>
     </div>
   )
 }
@@ -454,26 +484,32 @@ export default function ReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(s.topAgents || []).map((agent, i) => (
-                      <tr key={agent}>
-                        <td>
-                          <div className="agent-name-cell">
-                            <span style={{ fontSize: '1.2rem' }}>{agentIcons[agent] || '🎯'}</span>
-                            <div>
-                              <div style={{ fontWeight: 700 }}>{agent}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                {i === 0 ? 'Main' : i === 1 ? 'Secondary' : 'Flex'}
+                    {(s.topAgents || []).map((ag, i) => {
+                      const name = typeof ag === 'string' ? ag : (ag.name || '')
+                      const matches = typeof ag === 'object' ? ag.matches : null
+                      const kd = typeof ag === 'object' ? ag.kd : null
+                      const winPct = typeof ag === 'object' ? ag.winPct : null
+                      const hsPct = typeof ag === 'object' ? ag.hsPct : null
+                      const wpColor = winPct >= 55 ? 'var(--teal)' : winPct >= 45 ? 'var(--text)' : 'var(--red)'
+                      return (
+                        <tr key={name + i}>
+                          <td>
+                            <div className="agent-name-cell">
+                              <AgentAvatar name={name} size={36} />
+                              <div>
+                                <div style={{ fontWeight: 700 }}>{name}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                  {i === 0 ? 'Main' : i === 1 ? 'Secondary' : 'Flex'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td style={{ color: 'var(--text-muted)' }}>—</td>
-                        <td>
-                          <span className={winrateClass(55)}>—</span>
-                        </td>
-                        <td>—</td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td style={{ color: 'var(--text-muted)' }}>{matches ?? '—'}</td>
+                          <td><span style={{ color: wpColor, fontWeight: 700 }}>{winPct != null ? `${winPct}%` : '—'}</span></td>
+                          <td style={{ color: kd >= 1 ? 'var(--teal)' : kd != null ? 'var(--red)' : 'var(--text-muted)' }}>{kd ?? '—'}</td>
+                        </tr>
+                      )
+                    })}
                     {(!s.topAgents || s.topAgents.length === 0) && (
                       <tr>
                         <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
@@ -491,13 +527,20 @@ export default function ReportPage() {
               <div>
                 <SectionHeader title="Đặc Vụ Hay Dùng" />
                 <div className="mini-card-grid">
-                  {(s.topAgents || []).map((agent, i) => (
-                    <div key={agent} className={`mini-card ${i === 0 ? 'featured' : ''}`}>
-                      <div className="mini-card-icon">{agentIcons[agent] || '🎯'}</div>
-                      <div className="mini-card-name">{agent}</div>
-                      <div className="mini-card-sub">{i === 0 ? '⭐ Main' : `#${i + 1}`}</div>
-                    </div>
-                  ))}
+                  {(s.topAgents || []).map((ag, i) => {
+                    const name = typeof ag === 'string' ? ag : (ag.name || '')
+                    const winPct = typeof ag === 'object' ? ag.winPct : null
+                    return (
+                      <div key={name + i} className={`mini-card ${i === 0 ? 'featured' : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <AgentAvatar name={name} size={48} />
+                        <div className="mini-card-name">{name}</div>
+                        <div className="mini-card-sub" style={{ color: i === 0 ? 'var(--yellow)' : 'var(--text-muted)' }}>
+                          {i === 0 ? '★ Main' : `#${i + 1}`}
+                        </div>
+                        {winPct != null && <div style={{ fontSize: '0.7rem', fontWeight: 700, color: winPct >= 50 ? 'var(--teal)' : 'var(--red)' }}>{winPct}% WR</div>}
+                      </div>
+                    )
+                  })}
                 </div>
 
                 {/* Recommended Agents */}
@@ -508,8 +551,8 @@ export default function ReportPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       {ai.recommendedAgents.map(agent => (
-                        <span key={agent} className="badge badge-teal">
-                          {agentIcons[agent] || '👤'} {agent}
+                        <span key={agent} className="badge badge-teal" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <AgentAvatar name={agent} size={16} /> {agent}
                         </span>
                       ))}
                     </div>
@@ -521,10 +564,12 @@ export default function ReportPage() {
                 <SectionHeader title="Map Thường Chơi" />
                 <div className="mini-card-grid">
                   {(s.topMaps || []).map((map, i) => (
-                    <div key={map} className={`mini-card ${i === 0 ? 'featured' : ''}`}>
-                      <div className="mini-card-icon">{mapEmojis[map] || '🗺️'}</div>
+                    <div key={map} className={`mini-card ${i === 0 ? 'featured' : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 6, background: mapColor(map), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>
+                        {(map || '?')[0]}
+                      </div>
                       <div className="mini-card-name">{map}</div>
-                      <div className="mini-card-sub">{i === 0 ? '⭐ Best Map' : `#${i + 1}`}</div>
+                      <div className="mini-card-sub" style={{ color: i === 0 ? 'var(--yellow)' : 'var(--text-muted)' }}>{i === 0 ? '★ Best' : `#${i + 1}`}</div>
                     </div>
                   ))}
                 </div>
