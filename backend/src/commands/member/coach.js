@@ -51,6 +51,13 @@ module.exports = {
             const legshots  = playerStats.stats.legshots  || 0;
             const totalShots = headshots + bodyshots + legshots;
 
+            // Detect win/loss: compare player's team with winning team
+            const playerTeam = playerStats.team?.toLowerCase(); // 'red' or 'blue'
+            const winningTeam = match.teams
+              ? Object.entries(match.teams).find(([, t]) => t?.has_won === true)?.[0]?.toLowerCase()
+              : null;
+            const won = winningTeam ? playerTeam === winningTeam : null;
+
             matchDetails.push({
               matchId:     match.metadata.matchid,
               map:         match.metadata.map,
@@ -58,11 +65,10 @@ module.exports = {
               kills:       playerStats.stats.kills,
               deaths:      playerStats.stats.deaths,
               assists:     playerStats.stats.assists,
-              headshots:   headshots,
-              bodyshots:   bodyshots,
-              legshots:    legshots,
+              headshots, bodyshots, legshots,
               headshotPct: totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0,
               createdAt:   new Date(match.metadata.game_start * 1000),
+              won,
             });
           }
         }
@@ -96,13 +102,13 @@ module.exports = {
       const mapCount   = {};
       matchDetails.forEach(m => {
         if (!agentStats[m.agent]) {
-          agentStats[m.agent] = { name: m.agent, matches: 0, kills: 0, deaths: 0, hsTotal: 0 };
+          agentStats[m.agent] = { name: m.agent, matches: 0, kills: 0, deaths: 0, hsTotal: 0, wins: 0 };
         }
         agentStats[m.agent].matches += 1;
-        agentStats[m.agent].kills += (m.kills || 0);
-        agentStats[m.agent].deaths += (m.deaths || 0);
+        agentStats[m.agent].kills   += (m.kills || 0);
+        agentStats[m.agent].deaths  += (m.deaths || 0);
         agentStats[m.agent].hsTotal += (m.headshotPct || 0);
-
+        if (m.won === true) agentStats[m.agent].wins += 1;
         mapCount[m.map] = (mapCount[m.map] || 0) + 1;
       });
 
@@ -114,7 +120,7 @@ module.exports = {
           matches: a.matches,
           kd: a.deaths > 0 ? +(a.kills / a.deaths).toFixed(2) : a.kills,
           hsPct: Math.round(a.hsTotal / a.matches),
-          winPct: 0 // Chưa map với win/loss, để 0 làm placeholder
+          winPct: a.matches > 0 ? Math.round((a.wins / a.matches) * 100) : 0,
         }));
 
       const topMaps = Object.entries(mapCount).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
@@ -171,7 +177,8 @@ module.exports = {
         assists:     m.assists,
         headshotPct: m.headshotPct,
         playedAt:    m.createdAt,
-      })).reverse(); // Thứ tự thời gian tăng dần
+        won:         m.won ?? null,
+      })).reverse();
 
       // 7. Upsert Report vào DB (1 report duy nhất / user)
       await Report.findOneAndUpdate(
